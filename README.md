@@ -1,122 +1,72 @@
-# Svelte 5 Runes — ACS4390 Final Project
+# Frontend DX Research — ACS4390 Final Project
 
-**Europe Explorer** — a country browsing app built with Svelte 5, structured as a 4MAT presentation examining Svelte's runes reactivity system and the broader argument that frontend framework evolution is a developer experience competition, not a performance competition.
-
----
-
-## Quadrant 1 — WHY *(Motivation)*
-> *Why should anyone care about this?*
-
-Every major frontend framework shift has been marketed as a performance or architectural improvement. The evidence says otherwise — the real driver is always developer experience (DX).
-
-| Shift | Stated reason | Actual driver |
-|---|---|---|
-| Vanilla JS → React | "Virtual DOM is faster" | Component model, reusability, DX |
-| React → Svelte | "No runtime, smaller bundle" | Negligible in practice. Less boilerplate, DX |
-| Svelte 4 → Svelte 5 Runes | "Better reactivity model" | Zero performance gain. Explicit over magic, DX |
-
-The strongest evidence: Svelte 5 runes. The Svelte team scrapped their most-praised feature — the `$:` magic label syntax, the thing users cited as *the* reason to choose Svelte — and replaced it with explicit rune functions. The compiled output to the browser is **identical**. The motivation was entirely about making the code easier to reason about, easier for editors to understand, and easier to share across files. Pure DX.
-
-This project builds on an earlier finding (vanilla JS/CSS/HTML vs React + Tailwind + Zustand) that concluded runtime and bundle differences are negligible on any modern hardware. **The delta is always in the developer's chair, not the browser.**
+> "We came to benchmark performance. We found that performance was never the problem. The real cost is invisible — it lives in the developer, not the browser."
 
 ---
 
-## Quadrant 2 — WHAT *(Concepts)*
-> *What is it? The facts, definitions, and theory.*
+## The Research Arc
 
-### What is Svelte?
-
-Svelte is a compiler, not a runtime library. Your Svelte code compiles to vanilla DOM manipulation at build time — no virtual DOM, no diffing, no framework shipped to the browser. React ships ~45kb of runtime to every user. Svelte ships near zero.
-
-### The 5 Runes
-
-| Rune | React equivalent | What it does |
-|---|---|---|
-| `$state()` | `useState()` | Reactive variable — mutate directly, no setter function |
-| `$derived()` | `useMemo()` | Computed value, auto-updates when deps change |
-| `$effect()` | `useEffect()` | Side effect — no dependency array needed |
-| `$props()` | Function props | Component inputs |
-| `$bindable()` | *(no equivalent)* | Two-way bindable prop |
-
-### Svelte 4 vs Svelte 5 — Same Feature, Different Philosophy
-
-```js
-// Svelte 4 — magic label syntax
-let query = '';
-$: filtered = countries.filter(c =>
-  c.name.common.toLowerCase().includes(query.toLowerCase())
-)
-```
-
-```js
-// Svelte 5 — explicit runes
-let query = $state('')
-let filtered = $derived(
-  countries.filter(c =>
-    c.name.common.toLowerCase().includes(query.toLowerCase())
-  )
-)
-```
-
-Both produce identical browser output. The `$:` label is valid JS syntax hijacked by the Svelte compiler — it confuses TypeScript, breaks editor autocomplete, and can't leave `.svelte` files. `$derived` is explicit, works in plain `.js` files, and behaves like any other function call.
-
-### No Dependency Arrays
-
-React requires manually listing what a hook depends on — get it wrong and you get stale state or infinite loops:
-
-```js
-// React
-useEffect(() => {
-  localStorage.setItem('favourites', JSON.stringify([...favourites]))
-}, [favourites]) // forget this = bug. Wrong value here = bug.
-```
-
-Svelte tracks dependencies automatically at compile time:
-
-```js
-// Svelte 5
-$effect(() => {
-  localStorage.setItem('fav-countries', JSON.stringify([...favourites]))
-})
-// Svelte sees favourites is read inside — tracks it automatically. No array.
-```
-
-### Shared State Without External Libraries
-
-React needs Zustand, Redux, Jotai, or similar for shared cross-component state. In Svelte 5, `$state` works in plain `.js` files — no library needed:
-
-```js
-// store.js — plain JS file, no imports
-export const appState = $state({ query: '', favourites: new Set() })
-```
-
-```svelte
-<!-- any component -->
-<script>
-  import { appState } from './store.js'
-</script>
-<input bind:value={appState.query} />
-```
-
-This was impossible in Svelte 4 — reactive state was trapped inside components. Runes solved the escape problem.
+This final presentation spans two projects. The first measured performance differences between vanilla JS and a modern framework stack. The second examined an internal framework evolution — Svelte 4 to Svelte 5 runes. Both arrived at the same conclusion independently, which is the point.
 
 ---
 
-## Quadrant 3 — HOW *(Application)*
-> *How does it work in practice? The live demo.*
+## Project 1 — Vanilla JS vs React + Tailwind + Zustand
 
-### The App — Europe Explorer
+### The Question
 
-Built with Svelte 5 + Vite. Fetches all European countries from the REST Countries API and demonstrates every major rune in a real context.
+Does using a modern framework stack (React, Tailwind, Zustand) produce measurable performance gains over plain HTML/CSS/JS? Is the bundle cost justified?
 
-| Feature | Rune used | What to show |
+### What We Measured
+
+- Bundle size at production build
+- Runtime update performance (full DOM rebuild vs virtual DOM diffing)
+- State management complexity (manual localStorage vs Zustand `persist`)
+- Code scaling as features were added
+- Lighthouse scores (FCP, TTI, TBT)
+
+### The Numbers
+
+| | Vanilla | React + Tailwind + Zustand |
 |---|---|---|
-| Search input filtering | `$derived` | Type → list updates instantly, no event handler |
-| Subregion dropdown filter | `$derived` | Combine two reactive sources, zero extra code |
-| Favourites (★) | `$state` + `$effect` | State mutates directly; `$effect` persists to localStorage |
-| Document title on country open | `$effect` | Side effect triggered by state change, no boilerplate |
-| Border country chips | `$derived` | Computed from loaded data, clickable navigation |
-| Skeleton loading cards | `$state` (loading flag) | Clean conditional rendering |
+| JS bundle | 2.98 kB (gzip: 1.30 kB) | 199.11 kB (gzip: 63.54 kB) |
+| CSS bundle | 3.03 kB | 12.77 kB |
+
+A 66× JS bundle difference. On paper, vanilla wins.
+
+### What the Numbers Actually Mean
+
+The 196KB gap is not bloat. It's conventions, component systems, a state model, and a diffing engine — all shipped once, cached, and never written by hand. The real cost that doesn't show up in bundle size:
+
+- **Vanilla mutation model:** every `addTodo`, `deleteTodo`, and `toggleTodo` requires a manual `render()` and `saveState()` call after mutating state. Miss one and the UI is wrong. Miss the other and state is lost.
+- **Zustand:** `set()` handles reactivity automatically. Those calls disappear entirely.
+- **Persistence:** Zustand `persist` middleware = one line. Vanilla = manual `JSON.stringify`, `localStorage.setItem`, `JSON.parse`, `localStorage.getItem`, error handling for corrupted state.
+- **Scaling:** adding features in vanilla means growing `querySelector` chains, tight coupling between DOM and logic, wider bug surface. React components keep state isolated by default.
+
+### Finding
+
+> **The bundle is prepaid infrastructure. The overhead is invisible — it lives in the developer writing the code, not in the browser running it.**
+
+We were measuring the wrong thing. The bottleneck was never the browser.
+
+---
+
+## Project 2 — Svelte 5 Runes (Europe Explorer)
+
+### The Question
+
+If the first project showed that frameworks win on DX over vanilla, does the same pattern hold *within* a framework's own evolution? When Svelte rewrote its reactivity model, was it really about performance — or DX again?
+
+### The App
+
+**Europe Explorer** — fetches all European countries from the REST Countries API. Built with Svelte 5 + Vite.
+
+**Features:**
+- Country grid with flag, capital, population
+- Live search + subregion filter (both `$derived`)
+- Favourites persisted to `localStorage` (via `$effect`)
+- Detail view with stats and clickable border countries
+- Skeleton loading state
+- Document title updates on country select (`$effect`)
 
 **Run it:**
 
@@ -126,45 +76,134 @@ npm install
 npm run dev
 ```
 
-**Demo script:**
-1. Open the app — show skeleton loading, then the grid
-2. Type in search — `filtered` is `$derived`, updates live
-3. Star a country — `$effect` fires, check localStorage in DevTools
-4. Click a country — document title changes (`$effect`), border chips load
-5. Click a border country chip — navigates via `$state` mutation only, no router
+### Finding
+
+The compiled output of Svelte 4 and Svelte 5 is identical. The browser sees no difference. The Svelte team scrapped their most-praised feature — the `$:` magic label syntax — for zero performance gain. Pure DX.
 
 ---
 
-## Quadrant 4 — WHAT IF *(Implications)*
-> *What does this mean beyond the project? Open questions.*
+## 4MAT Presentation
 
-### Signals Are Winning
+### Quadrant 1 — WHY
+> *Why do developers keep switching frameworks if performance differences are negligible?*
 
-Svelte 5 runes are signals — a reactive primitive that tracks its own dependencies. Svelte didn't invent this; it joined a movement already underway:
+Developers keep switching. Every 3–5 years, something new wins. The stated reasons are always technical — faster rendering, smaller bundles, better architecture. Two independent projects tested that claim directly and found the same thing:
+
+**Runtime and bundle differences are negligible on any machine made in the last decade. The real reason people switch is always developer experience.**
+
+The 199KB React bundle felt like a problem until we looked at what it replaced: manual render cycles, hand-rolled persistence, growing querySelector chains. The "expensive" framework was cheaper. The "cheap" vanilla build had hidden costs paid in developer time and cognitive load.
+
+Frameworks don't win because the browser runs them better. They win because developers suffer less writing them.
+
+### Quadrant 2 — WHAT
+> *What does that pattern look like across frontend history?*
+
+| Shift | Stated reason | Actual driver |
+|---|---|---|
+| Vanilla JS → React | "Virtual DOM is faster" | Eliminated manual render/sync cycles, DX |
+| React → Svelte | "No runtime, smaller bundle" | Negligible in practice. Less boilerplate, DX |
+| Svelte 4 → Svelte 5 Runes | "Better reactivity model" | Zero performance gain. Explicit over magic, DX |
+
+The clearest case is Svelte 5 runes. The Svelte team scrapped their most-praised feature — the `$:` magic label syntax, the thing users cited as *the* reason to choose Svelte — and replaced it with explicit rune functions. The compiled output to the browser is **identical**. No performance gain. The motivation was entirely about making the code easier to reason about and easier to share across files. Pure DX.
+
+**The 5 Runes and their React equivalents:**
+
+| Rune | React equivalent | What it does |
+|---|---|---|
+| `$state()` | `useState()` | Reactive variable — mutate directly, no setter |
+| `$derived()` | `useMemo()` | Computed value, auto-tracks its own dependencies |
+| `$effect()` | `useEffect()` | Side effect — no dependency array needed |
+| `$props()` | Function props | Component inputs |
+| `$bindable()` | *(no equivalent)* | Two-way bindable prop |
+
+### Quadrant 3 — HOW
+> *How does the DX difference show up in real code?*
+
+**Vanilla vs React — state mutation:**
+
+```js
+// Vanilla — every mutation requires manual sync
+function addTodo(text) {
+  state.todos.push({ id: Date.now(), text, done: false })
+  render()      // forget this = UI is wrong
+  saveState()   // forget this = data is lost
+}
+```
+
+```js
+// Zustand — set() handles reactivity, persistence is one line
+const useTodos = create(persist(
+  (set) => ({
+    todos: [],
+    addTodo: (text) => set(s => ({ todos: [...s.todos, { id: Date.now(), text, done: false }] }))
+  }),
+  { name: 'todos' }
+))
+```
+
+**Svelte 4 vs Svelte 5 — same feature, same browser output:**
+
+```js
+// Svelte 4 — $: is a JS label repurposed by the compiler
+// Confuses TypeScript, breaks autocomplete, can't leave .svelte files
+let query = '';
+$: filtered = countries.filter(c =>
+  c.name.common.toLowerCase().includes(query.toLowerCase())
+)
+```
+
+```js
+// Svelte 5 — explicit, works in plain .js files, autocompletes
+let query = $state('')
+let filtered = $derived(
+  countries.filter(c =>
+    c.name.common.toLowerCase().includes(query.toLowerCase())
+  )
+)
+```
+
+React requires manually declaring dependencies — get it wrong and you get stale state or infinite loops:
+
+```js
+// React — forget [favourites] = stale bug. Wrong value = infinite loop.
+useEffect(() => {
+  localStorage.setItem('favourites', JSON.stringify([...favourites]))
+}, [favourites])
+```
+
+Svelte tracks dependencies automatically at compile time:
+
+```js
+// Svelte 5 — no array. Svelte sees favourites used inside, tracks it.
+$effect(() => {
+  localStorage.setItem('fav-countries', JSON.stringify([...favourites]))
+})
+```
+
+Every one of these differences is invisible to the browser. All of them matter to the developer.
+
+### Quadrant 4 — WHAT IF
+> *What if this is the direction the whole industry is moving?*
+
+Svelte 5 runes are signals — reactive primitives that track their own dependencies. Svelte didn't invent this. It joined a movement already in progress:
 
 - **Solid.js** — built on signals from day one
 - **Vue 3** — `ref()` and `reactive()` are signals
 - **Angular 18+** — added signals as core primitive, deprecating Zone.js
-- **Preact** — `@preact/signals` library
+- **Preact** — `@preact/signals` as a first-party library
 - **React** — the last major holdout on VDOM diffing and manual dependency arrays
 
-### What If React Is the Outlier?
+What if React is now the outlier? For a decade, React's model was the default assumption. The question is flipping: why does React still require dependency arrays in 2025? Why is direct mutation forbidden when every other major framework dropped that constraint?
 
-For a decade, React's model was the default assumption. The question is now flipping: why does React still require dependency arrays in 2025? Why is state mutation forbidden? The rest of the ecosystem moved on.
+And the bigger question: if runtime performance is a solved problem on modern hardware, and bundle sizes are marginal with compression and caching — **is developer experience the only meaningful competition left?**
 
-### What If DX Is the Only Battleground Left?
-
-Given that runtime performance differences are negligible on modern hardware, and bundle sizes are marginal with compression and caching — the only meaningful competition left between frameworks is: *which one is less painful to write?*
-
-Runes are Svelte's answer. The rest of the industry is converging on the same answer through signals.
-
-**The browser never cared. It was always about the developer.**
+Two projects, two different comparisons, same answer. The browser never cared. It was always about the developer.
 
 ---
 
 ## Resources
 
 - [Svelte 5 Docs](https://svelte.dev/docs)
-- [Runes announcement blog post](https://svelte.dev/blog/runes) — explains the WHY from the creator
-- [Rich Harris — Rethinking Reactivity](https://www.youtube.com/watch?v=AdNJ3fydeao) — the philosophy behind the compiler approach
+- [Runes announcement — svelte.dev/blog/runes](https://svelte.dev/blog/runes)
+- [Rich Harris — Rethinking Reactivity (YouTube)](https://www.youtube.com/watch?v=AdNJ3fydeao)
 - [REST Countries API](https://restcountries.com)
