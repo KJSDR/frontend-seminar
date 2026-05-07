@@ -201,6 +201,29 @@ Two projects, two different comparisons, same answer. The browser never cared. I
 
 ---
 
+## Trade-offs — When the Thesis Doesn't Hold
+
+The DX argument is strong, but it's not absolute. There are legitimate cases where vanilla or the older approach wins.
+
+**When vanilla JS is the right call:**
+- Zero dependency risk — no framework can go unmaintained, break an API, or release a major migration (see: React 18 concurrent mode, Svelte 4 → 5 breaking changes)
+- Runs anywhere forever — no build step, no node_modules, works in environments where tooling is restricted
+- Real bundle cost on slow mobile networks — 199KB gzipped to 63KB is still 63KB on a 3G connection before the page does anything
+- Micro-sites, embeds, or tools that must load instantly have legitimate reasons to avoid frameworks
+
+**When Svelte 4 magic was genuinely better:**
+- For simple, self-contained components `$:` is fewer characters and less noise than `$derived()`
+- Developers who don't use TypeScript lost nothing — the magic worked fine if you weren't fighting editor tooling
+- The migration cost from Svelte 4 to Svelte 5 is real — existing codebases don't get the benefits for free
+
+**The honest version of the thesis:**
+
+> DX wins *on average*, across *teams*, over *time*. For a solo developer on a small static site, vanilla is a completely rational choice. The framework overhead only pays off when the hidden developer costs accumulate — and they always do as scope grows.
+
+The evidence from Project 1 supports this: the vanilla and React todo apps were comparable at small scale. The DX gap grows with the feature count, team size, and time on the project. The 66× bundle difference is fixed. The developer tax compounds.
+
+---
+
 ## Resources
 
 - [Svelte 5 Docs](https://svelte.dev/docs)

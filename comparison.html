@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DX Comparison — Vanilla · React + Zustand · Svelte 5</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #ffffff;
+      --surface:    #f1f1f1;
+      --border:     #d4d4d4;
+      --text:       #282A35;
+      --muted:      #767676;
+      --green:      #04AA6D;
+      --vanilla:    #5a6472;
+      --react:      #0284c7;
+      --svelte:     #e03d00;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: #282A35;
+      padding: 20px 40px 0;
+      border-bottom: none;
+    }
+
+    .header h1 {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 5px;
+      color: #fff;
+    }
+
+    .header p {
+      font-size: 0.78rem;
+      color: #aaa;
+      font-style: italic;
+      margin-bottom: 0;
+    }
+
+    .tabs {
+      display: flex;
+      margin-top: 16px;
+    }
+
+    .tab {
+      padding: 9px 18px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: #aaa;
+      border-bottom: 3px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: inherit;
+    }
+
+    .tab:hover { color: #fff; }
+    .tab.active { color: #fff; border-bottom-color: var(--green); }
+
+    .content { padding: 28px 40px 48px; }
+
+    .panel { display: none; }
+    .panel.active { display: flex; flex-direction: column; gap: 28px; }
+
+    .scale {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .scale-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .scale-row {
+      display: grid;
+      grid-template-columns: 160px 1fr 60px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .scale-label {
+      font-size: 0.73rem;
+      font-weight: 600;
+    }
+
+    .scale-label.vanilla { color: var(--vanilla); }
+    .scale-label.react   { color: var(--react); }
+    .scale-label.svelte  { color: var(--svelte); }
+
+    .scale-track {
+      height: 10px;
+      background: var(--border);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .scale-fill {
+      height: 100%;
+      border-radius: 5px;
+    }
+
+    .scale-fill.vanilla { background: var(--vanilla); }
+    .scale-fill.react   { background: var(--react); }
+    .scale-fill.svelte  { background: var(--svelte); }
+
+    .scale-count {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .col-header {
+      display: flex;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .col-header.vanilla { border-bottom-color: var(--vanilla); }
+    .col-header.react   { border-bottom-color: var(--react); }
+    .col-header.svelte  { border-bottom-color: var(--svelte); }
+
+    .col-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .col-label.vanilla { color: var(--vanilla); }
+    .col-label.react   { color: var(--react); }
+    .col-label.svelte  { color: var(--svelte); }
+
+    .col-lines {
+      margin-left: auto;
+      font-size: 0.68rem;
+      color: var(--muted);
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    pre {
+      border-radius: 6px;
+      overflow: auto;
+      font-size: 0.75rem;
+      line-height: 1.65;
+    }
+
+    pre code.hljs { padding: 14px 16px; border-radius: 6px; }
+
+    .annotations { display: flex; flex-direction: column; gap: 7px; }
+
+    .note {
+      padding: 9px 12px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.55;
+      border-left: 3px solid;
+    }
+
+    .note strong { display: block; font-weight: 600; margin-bottom: 2px; }
+
+    .note.bad  { background: #fef2f2; border-left-color: #ef4444; color: #991b1b; }
+    .note.ok   { background: #fefce8; border-left-color: #ca8a04; color: #713f12; }
+    .note.good { background: #f0fdf4; border-left-color: #16a34a; color: #14532d; }
+
+    .verdict {
+      padding: 16px 20px;
+      background: #f0fdf4;
+      border-radius: 4px;
+      border: 1px solid #bbf7d0;
+      border-left: 4px solid var(--green);
+    }
+
+    .verdict-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #16a34a;
+      margin-bottom: 7px;
+    }
+
+    .verdict-text {
+      font-size: 0.83rem;
+      line-height: 1.6;
+      color: #14532d;
+    }
+
+    .verdict-text strong { color: #052e16; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>DX Comparison — Vanilla JS &nbsp;·&nbsp; React + Zustand &nbsp;·&nbsp; Svelte 5</h1>
+  <p>"The real overhead isn't the bundle. It's the mental model."</p>
+  <div class="tabs">
+    <button class="tab active" data-tab="mutation"    onclick="switchTab('mutation')">State Mutation</button>
+    <button class="tab"        data-tab="persistence" onclick="switchTab('persistence')">Persistence</button>
+    <button class="tab"        data-tab="derived"     onclick="switchTab('derived')">Derived Values</button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- ── STATE MUTATION ───────────────────────────── -->
+  <div class="panel active" id="panel-mutation">
+
+    <div class="grid">
+
+      <div class="col">
+        <div class="col-header vanilla">
+          <span class="col-label vanilla">Vanilla JS</span>
+          <span class="col-lines">24 lines</span>
+        </div>
+        <pre><code class="language-javascript">function render() {
+  listEl.innerHTML = state.todos
+    .map(t => buildTodoHTML(t))
+    .join('')
+}
+
+function addTodo(text) {
+  state.todos.push({ id: Date.now(), text, done: false })
+  render()
+  saveState()
+}
+
+function deleteTodo(id) {
+  state.todos = state.todos.filter(t => t.id !== id)
+  render()
+  saveState()
+}
+
+function toggleTodo(id) {
+  const todo = state.todos.find(t => t.id === id)
+  if (todo) todo.done = !todo.done
+  render()
+  saveState()
+}</code></pre>
+        <div class="annotations">
+          <div class="note bad">
+            <strong>3 responsibilities per action</strong>
+            Every mutation: update state, call <code>render()</code>, call <code>saveState()</code>. Miss one = silent bug.
+          </div>
+          <div class="note bad">
+            <strong>render() required by you</strong>
+            Framework handles this for free in React and Svelte. Here you write and maintain it.
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-header react">
+          <span class="col-label react">React + Zustand</span>
+          <span class="col-lines">16 lines</span>
+        </div>
+        <pre><code class="language-javascript">const useStore = create(persist(
+  (set) => ({
+    todos: [],
+    addTodo: (text) => set((s) => ({
+      todos: [...s.todos,
+        { id: Date.now(), text, done: false }]
+    })),
+    deleteTodo: (id) => set((s) => ({
+      todos: s.todos.filter(t => t.id !== id)
+    })),
+    toggleTodo: (id) => set((s) => ({
+      todos: s.todos.map(t =>
+        t.id === id ? { ...t, done: !t.done } : t)
+    }))
+  }),
+  { name: 'todos' }
+))</code></pre>
+        <div class="annotations">
+          <div class="note ok">
+            <strong>set() handles re-render and storage</strong>
+            No manual calls. Define the new state value — Zustand does the rest.
+          </div>
+          <div class="note ok">
+            <strong>Immutable updates required</strong>
+            Can't push or splice directly — must spread arrays and objects every time.
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-header svelte">
+          <span class="col-label svelte">Svelte 5</span>
+          <span class="col-lines">16 lines</span>
+        </div>
+        <pre><code class="language-javascript">let todos = $state([])
+
+$effect(() => {
+  localStorage.setItem('todos', JSON.stringify(todos))
+})
+
+const addTodo = (text) =>
+  todos.push({ id: Date.now(), text, done: false })
+
+const deleteTodo = (id) =>
+  todos.splice(todos.findIndex(t => t.id === id), 1)
+
+const toggleTodo = (id) => {
+  const t = todos.find(t => t.id === id)
+  if (t) t.done = !t.done
+}</code></pre>
+        <div class="annotations">
+          <div class="note good">
+            <strong>Mutate directly</strong>
+            Push, splice, assign — normal JS. No render(), no set(), no spread.
+          </div>
+          <div class="note good">
+            <strong>$effect handles storage once</strong>
+            Defined once, reacts to every future mutation automatically.
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="verdict">
+      <div class="verdict-label">Takeaway</div>
+      <div class="verdict-text">
+        Line counts are similar here — the real difference is <strong>coordination burden</strong>. Vanilla requires 2 manual calls after every single action. React removes them but forces immutable updates. Svelte lets you mutate like normal JS and reacts automatically. Same browser output across all three.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PERSISTENCE ──────────────────────────────── -->
+  <div class="panel" id="panel-persistence">
+
+    <div class="grid">
+
+      <div class="col">
+        <div class="col-header vanilla">
+          <span class="col-label vanilla">Vanilla JS</span>
+          <span class="col-lines">21 lines</span>
+        </div>
+        <pre><code class="language-javascript">const state = { todos: loadState() }
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('todos')
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(
+      'todos',
+      JSON.stringify(state.todos)
+    )
+  } catch (e) {
+    console.error('Failed to persist', e)
+  }
+}</code></pre>
+        <div class="annotations">
+          <div class="note bad">
+            <strong>21 lines, written from scratch</strong>
+            Serialization, deserialization, error handling, storage key — every project, every time.
+          </div>
+          <div class="note bad">
+            <strong>Called manually after every mutation</strong>
+            Not automatic. One missed <code>saveState()</code> = silent data loss on refresh.
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-header react">
+          <span class="col-label react">React + Zustand</span>
+          <span class="col-lines">4 lines</span>
+        </div>
+        <pre><code class="language-javascript">create(persist(
+  (set) => ({ todos: [] }),
+  { name: 'todos' }
+))</code></pre>
+        <div class="annotations">
+          <div class="note good">
+            <strong>4 lines of config</strong>
+            Handles read on mount, write on change, JSON serialization, and error recovery.
+          </div>
+          <div class="note good">
+            <strong>Fully automatic</strong>
+            Any state change persists immediately. Nothing to call, nothing to forget.
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-header svelte">
+          <span class="col-label svelte">Svelte 5</span>
+          <span class="col-lines">9 lines</span>
+        </div>
+        <pre><code class="language-javascript">let todos = $state(
+  JSON.parse(
+    localStorage.getItem('todos') ?? '[]'
+  )
+)
+
+$effect(() => {
+  localStorage.setItem('todos',
+    JSON.stringify(todos))
+})</code></pre>
+        <div class="annotations">
+          <div class="note good">
+            <strong>9 lines, no library</strong>
+            <code>$effect</code> reacts to <code>todos</code> automatically. No middleware, no config.
+          </div>
+          <div class="note ok">
+            <strong>No built-in error recovery</strong>
+            Corrupted storage needs manual handling — trade-off for zero dependencies.
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="verdict">
+      <div class="verdict-label">Takeaway</div>
+      <div class="verdict-text">
+        <strong>21 lines vs 4 lines — same behaviour in the browser.</strong> This is the starkest example. Vanilla persistence is boilerplate written from scratch and called manually on every mutation. Zustand collapses it to a single middleware call with automatic sync and error recovery built in.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DERIVED VALUES ───────────────────────────── -->
+  <div class="panel" id="panel-derived">
+
+    <div class="grid">
+
+      <div class="col">
+        <div class="col-header vanilla">
+          <span class="col-label vanilla">Vanilla JS</span>
+          <span class="col-lines">7 lines</span>
+        </div>
+        <pre><code class="language-javascript">function render() {
+  const remaining = state.todos
+    .filter(t => !t.done).length
+
+  countEl.textContent = `${remaining} left`
+  listEl.innerHTML = buildListHTML(state.todos)
+}</code></pre>
+        <div class="annotations">
+          <div class="note bad">
+            <strong>Buried inside render()</strong>
+            Recalculates on every render — even when unrelated state changed. No isolation, no memoization.
+          </div>
+          <div class="note bad">
+            <strong>Not reusable</strong>
+            Tied to the render function. Can't extract or test independently.
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-header react">
+          <span class="col-label react">React + useMemo</span>
+          <span class="col-lines">4 lines</span>
+        </div>
+        <pre><code class="language-javascript">const remaining = useMemo(
+  () => todos.filter(t => !t.done).length,
+  [todos]
+)</code></pre>
+        <div class="annotations">
+          <div class="note ok">
+            <strong>Memoized — skips if deps unchanged</strong>
+            Only recalculates when <code>todos</code> changes. Correct when deps are correct.
+          </div>
+          <div class="note bad">
+            <strong>Manual dependency array</strong>
+            Wrong deps = stale count. React can't verify this at compile time.
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-header svelte">
+          <span class="col-label svelte">Svelte 5</span>
+          <span class="col-lines">3 lines</span>
+        </div>
+        <pre><code class="language-javascript">let remaining = $derived(
+  todos.filter(t => !t.done).length
+)</code></pre>
+        <div class="annotations">
+          <div class="note good">
+            <strong>No dependency array</strong>
+            Compiler tracks <code>todos</code> at build time. Nothing to get wrong.
+          </div>
+          <div class="note good">
+            <strong>Works outside components</strong>
+            Unlike Svelte 4, <code>$derived</code> works in plain <code>.js</code> files too.
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="verdict">
+      <div class="verdict-label">Takeaway</div>
+      <div class="verdict-text">
+        Vanilla has no concept of derived values — everything recalculates inside <code>render()</code>. React adds memoization but requires a manual dependency array. Svelte 5 <strong>removes the problem at the compiler level</strong> — $derived tracks its own dependencies automatically, always correct.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  hljs.highlightAll()
+
+  function switchTab(id) {
+    document.querySelectorAll('.tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.tab === id)
+    )
+    document.querySelectorAll('.panel').forEach(p =>
+      p.classList.toggle('active', p.id === 'panel-' + id)
+    )
+  }
+</script>
+
+</body>
+</html>
